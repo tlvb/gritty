@@ -1,4 +1,4 @@
-#include "findkbd.h"
+#include "kbd.h"
 #include <stdio.h>
 #include <stdlib.h>
 int main(void) {
