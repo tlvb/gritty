@@ -1,9 +1,13 @@
+#define _XOPEN_SOURCE 600
 #include "kbd.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/select.h>
+#include <errno.h>
+#include <sys/wait.h>
 
 int main(int argc, char *const *argv) {
 	int ci = -1;
@@ -18,17 +22,19 @@ int main(int argc, char *const *argv) {
 		for(;;);
 	}
 
-
+	// look for keyboard device
+	/*{{{*/
 	char *devpath = NULL;
+	fputs("searching for keyboard...", stderr);
 	for (;;) {
 		devpath = find_keyboard();
 		if (devpath != NULL) {
-			printf("keyboard located at '%s'\n", devpath);
+			fprintf(stderr, "\nkeyboard located at '%s'\n", devpath);
 			break;
 		}
 		else {
-			fprintf(stderr, "no keyboard found, trying again in ten seconds...\n");
-			sleep(10);
+			sleep(2);
+			fputc('.', stderr);
 		}
 	}
 	int fd = open(devpath, O_RDONLY);
@@ -36,28 +42,75 @@ int main(int argc, char *const *argv) {
 		fprintf(stderr, "could not open devfile\n");
 		return 1;
 	}
+	/*}}}*/
 
 	kbd_t kbd = { .fd = fd, .keymap = DVORAK_WITH_ESC };
 
-	int p[2];
-	pipe(p);
+	int ret = -1;
+	int ptm = posix_openpt(O_RDWR);
+	ret = grantpt(ptm);
+	ret = unlockpt(ptm);
+	int pts = open(ptsname(ptm), O_RDWR);
+	char buf[128];
 
-	int f = fork();
-	if (f > 0) {
-		// child
-		close(0); // close stdin
-		dup2(p[0], 0); // stdin is now one end of the pipe
-		close(p[0]);
-
-		execvp(argv[ci], argv+ci); // run program
-	}
-	else if (f == 0) {
+	pid_t pid = fork();
+	if (pid == 0) { /*{{{*/
 		// parent
+		fd_set readset;
+		int nfds = -1;
+		if (nfds <= kbd.fd) { nfds = kbd.fd+1; }
+		if (nfds <= ptm) { nfds = ptm+1; }
+
 		for (;;) {
-			int kv = read_and_translate(NULL, 0, &kbd);
-			write(p[1], &kv, sizeof(int));
+			FD_ZERO(&readset);
+			FD_SET(kbd.fd, &readset);
+			FD_SET(ptm, &readset);
+			select(nfds, &readset, NULL, NULL, NULL);
+			if (FD_ISSET(kbd.fd, &readset)) {
+				char kv = (char)read_and_translate(NULL, 0, &kbd);
+				if (kv != 0) {
+					int n = write(ptm, &kv, sizeof(char));
+					if (n <= 0) {
+						exit(20);
+					}
+				}
+			}
+			if (FD_ISSET(ptm, &readset)) {
+				ssize_t n = read(ptm, buf, sizeof(buf));
+				if (n < 0) {
+					//oh shit!
+					exit(30);
+				}
+				write(2, buf, n);
+			}
 		}
-	}
+	} /*}}}*/
+	else if (pid > 0) { /*{{{*/
+		close(0);
+		close(1);
+		close(2);
+		dup(pts);
+		dup(pts);
+		dup(pts);
+		setsid();
+		ioctl(0, TIOCSCTTY, 1);
+
+		for (;;) {
+			pid_t pid2 = fork();
+			if (pid2 == 0) {
+				// child
+				printf("\n\nSPAWNING\n");
+				execvp(argv[ci], argv+ci); // run program
+			}
+			else if (pid2 > 0) {
+				waitpid(pid2, NULL, 0);
+			}
+			else {
+				printf("ERROR: FORK FAILED\n");
+				exit(40);
+			}
+		}
+	} /*}}}*/
 	else {
 		printf("ERROR: FORK FAILED\n");
 	}
