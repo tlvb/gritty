@@ -20,7 +20,8 @@ int main(void) {
 
 	kbd_t kbd = { .fd = fd, .keymap = DVORAK_WITH_ESC };
 	while (true) {
-		read_and_translate(NULL, 0, &kbd);
+		int kv = read_and_translate(NULL, 0, &kbd);
+		putchar(kv);
 	}
 }
 

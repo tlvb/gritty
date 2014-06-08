@@ -5,13 +5,20 @@ vpath %.h src/
 
 # --------------------------------------------------------------------
 .PHONY: all
-all: test
-.PHONY: test
-test: test_findkbd test_read_and_translate
+all: main tests
+.PHONY: main
+main: gritty
+.PHONY: tests
+tests: test_findkbd test_read_and_translate
 # --------------------------------------------------------------------
 .PHONY: clean
 clean:
 	-rm *.o
+
+# --------------------------------------------------------------------
+# MAIN PROGRAMS
+gritty: gritty.c kbd.o
+	$(CC) $(CFLAGS) -o $@ $(filter-out %.h, $^)
 
 # --------------------------------------------------------------------
 # TEST PROGRAMS

@@ -53,7 +53,6 @@ char *find_keyboard(void) { /*{{{*/
 	while ((de = readdir(dh)) != NULL) {
 		if (strncmp(de->d_name, "event", 5) == 0) {
 			snprintf(efn, 64, "/dev/input/%s", de->d_name);
-			printf("checking '%s'\n", efn);
 			if (check_if_keyboard(efn)) {
 				closedir(dh);
 				return efn;
@@ -61,7 +60,7 @@ char *find_keyboard(void) { /*{{{*/
 		}
 	}
 } /*}}}*/
-int read_and_translate(uint8_t *seq, int n, kbd_t *kbd) {
+int read_and_translate(uint8_t *seq, int n, kbd_t *kbd) { /*{{{*/
 	struct input_event ie;
 	read(kbd->fd, &ie, sizeof(ie));
 
@@ -73,10 +72,12 @@ int read_and_translate(uint8_t *seq, int n, kbd_t *kbd) {
 					case 0: // release
 						break;
 					case 1: // press
-						printf("key %c pressed\n", kv);
+						return kv;
 						break;
-					case 2:
-						printf("key %c repeated\n", kv);
+					case 2: // autorepeat
+						// possibly add some kind of runtime option
+						// to turn on/off autorepeat?
+						return kv;
 						break;
 				}
 			}
@@ -116,4 +117,4 @@ int read_and_translate(uint8_t *seq, int n, kbd_t *kbd) {
 		//printf("type %d is not key\n", ie.type);
 	}
 	return 0;
-}
+} /*}}}*/
