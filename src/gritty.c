@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 700
 #include "kbd.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -101,18 +101,22 @@ int main(int argc, char *const *argv) {
 				// child
 				printf("\n\nSPAWNING\n");
 				execvp(argv[ci], argv+ci); // run program
+				printf("ERROR: SPAWNING OF '%s' FAILED\n", argv[ci]);
+				perror(NULL);
+				sleep(9);
 			}
 			else if (pid2 > 0) {
 				waitpid(pid2, NULL, 0);
 			}
 			else {
-				printf("ERROR: FORK FAILED\n");
+				printf("ERROR: SECOND FORK FAILED\n");
 				exit(40);
 			}
+			sleep(1);
 		}
 	} /*}}}*/
 	else {
-		printf("ERROR: FORK FAILED\n");
+		printf("ERROR: FIRST FORK FAILED\n");
 	}
 
 }
