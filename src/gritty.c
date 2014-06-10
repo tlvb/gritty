@@ -33,7 +33,7 @@ int main(int argc, char *const *argv) {
 			break;
 		}
 		else {
-			sleep(2);
+			sleep(1);
 			fputc('.', stderr);
 		}
 	}

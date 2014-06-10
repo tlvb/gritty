@@ -59,6 +59,8 @@ char *find_keyboard(void) { /*{{{*/
 			}
 		}
 	}
+	closedir(dh);
+	return NULL;
 } /*}}}*/
 int read_and_translate(uint8_t *seq, int n, kbd_t *kbd) { /*{{{*/
 	struct input_event ie;
